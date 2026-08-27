@@ -92,3 +92,39 @@ F13::Run "D:\project\QT\PinCodeScanner\build\debug\PinCodeScanner.exe"  ; 替换
 
 ; 释放 Alt+F11 时释放 Ctrl
 !F11 Up::Send "{Ctrl up}"
+
+
+; ============================================================
+; 新增：中文模式下，双击「/」键（输入法会打出「、、」）自动转为 // 注释符
+; 原理：拦截 / 键，第一次按下输出顿号「、」；
+;       600ms内连续第二次按下时，删掉顿号，改用 SendText 直接插入 //（绕过输入法，不会被转回顿号）
+; Shift/Ctrl/Alt 组合（？、Ctrl+/ 等）保留原功能
+; #InputLevel 1：防止脚本自己 Send 的按键再次触发本热键
+; 注意：若用鼠标点任务栏"中/英"图标切换，状态会与记录不同步（同脚本顶部说明）
+; ============================================================
+global SlashPending := false
+global SlashLastTime := 0
+
+#HotIf InChinese
+#InputLevel 1
+/::
+{
+    global SlashPending, SlashLastTime
+    if GetKeyState("Shift", "P") or GetKeyState("Ctrl", "P") or GetKeyState("Alt", "P") {
+        Send "{Blind}/"
+        return
+    }
+    now := A_TickCount
+    if (SlashPending and A_PriorKey == "/" and now - SlashLastTime <= 600) {
+        SlashPending := false
+        Send "{Backspace}"
+        SendText "//"
+        return
+    }
+    SlashPending := true
+    SlashLastTime := now
+    SendText "、"
+    return
+}
+#InputLevel 0
+#HotIf
